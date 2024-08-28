@@ -1,5 +1,3 @@
-// backend/app.js
-
 const express = require("express");
 const cors = require('cors');
 const mysql = require('mysql2');
@@ -10,17 +8,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const pool = mysql.createPool({
+// Create MySQL connection
+const connection = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Adarsh@123',
-  database: process.env.DB_NAME || 'idealmedicodb',
-  waitForConnections: true,
-  connectionLimit: 10, // Adjust the limit based on your application's needs
-  queueLimit: 0
+  user: process.env.DB_USER || 'root', // Replace with your MySQL username
+  password: process.env.DB_PASSWORD || 'Adarsh@123', // Replace with your MySQL password
+  database: process.env.DB_NAME || 'idealmedicodb' // Replace with your MySQL database name
 });
 
-
+// Connect to MySQL database
 connection.connect((err) => {
   if (err) {
     console.error('Error connecting to the database:', err);
@@ -29,6 +25,7 @@ connection.connect((err) => {
   console.log('Connected to the MySQL database.');
 });
 
+// API route to fetch data based on medicine name
 app.get('/api/:name', (req, res) => {
   const nameArr = req.params.name.split(' ');
   const query = nameArr.join('_').toLowerCase();
@@ -40,12 +37,10 @@ app.get('/api/:name', (req, res) => {
     }
 
     const tableNames = tables.map(table => Object.values(table)[0].toLowerCase());
-    // console.log('Available tables:', tableNames);
-
     const matchingTable = tableNames.find(table => table === query);
-    // console.log('Matching table:', matchingTable);
 
     if (matchingTable) {
+      // If a matching table is found, fetch all data from the table
       connection.query(`SELECT * FROM ${matchingTable}`, (err, results) => {
         if (err) {
           console.error('Error fetching data from table:', err);
@@ -54,6 +49,7 @@ app.get('/api/:name', (req, res) => {
         res.json({ results });
       });
     } else {
+      // If no exact match, search across all tables for the name
       let promises = tableNames.map(table => {
         return new Promise((resolve, reject) => {
           connection.query(`SELECT * FROM ${table} WHERE name LIKE ?`, [`%${req.params.name}%`], (err, results) => {
@@ -81,6 +77,7 @@ app.get('/api/:name', (req, res) => {
   });
 });
 
+// Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
